@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { z } from "zod";
 import { createReview } from "@/lib/data";
+import { getAuthCookieName, verifyAuthCookieValue } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -20,9 +22,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "invalid_body" }, { status: 400 });
     }
 
+    const cookieName = getAuthCookieName();
+    const raw = cookies().get(cookieName)?.value;
+    const session = verifyAuthCookieValue(raw);
+    const sessionName = (session?.name || "").trim();
+
     const review = await createReview({
       ...parsed.data,
-      authorName: parsed.data.authorName || "Usuária"
+      authorName: sessionName || parsed.data.authorName || "Usuária"
     });
     return NextResponse.json({ review });
   } catch (err) {

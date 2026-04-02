@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { getStrollerById, listReviewsByStrollerId } from "@/lib/data";
 import ReviewForm from "@/components/ReviewForm";
 import ReviewVoteButton from "@/components/ReviewVoteButton";
-import ReviewHelpfulButton from "@/components/ReviewHelpfulButton";
 
 type Props = {
   params: { id: string };
@@ -108,13 +107,13 @@ export default async function StrollerPage({ params }: Props) {
           <h2 className="text-lg font-semibold text-slate-900">Reviews</h2>
           <div className="mt-4 space-y-4">
             {reviews.map((r) => (
-              <article key={r.id} className="rounded-xl border border-slate-200 p-4">
+              <article key={r.id} className="relative rounded-xl border border-slate-200 p-4 pb-12">
                 <header className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold text-slate-900">{r.authorName}</p>
                     <p className="text-xs text-slate-500">{new Date(r.createdAt).toLocaleDateString("pt-BR")}</p>
                   </div>
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                  <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-950 ring-1 ring-amber-200">
                     {r.rating}/5
                   </span>
                 </header>
@@ -131,11 +130,9 @@ export default async function StrollerPage({ params }: Props) {
                     ))}
                   </div>
                 ) : null}
-                <div className="mt-4 flex items-center justify-between">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <ReviewVoteButton reviewId={r.id} initialCount={r.votesCount} />
-                    <ReviewHelpfulButton reviewId={r.id} initialCount={r.helpfulCount} />
-                  </div>
+
+                <div className="absolute bottom-3 right-3">
+                  <ReviewVoteButton reviewId={r.id} initialCount={r.votesCount} />
                 </div>
               </article>
             ))}

@@ -7,7 +7,7 @@ function ArrowUpIcon({ active }: { active: boolean }) {
     <svg
       viewBox="0 0 20 20"
       aria-hidden="true"
-      className={active ? "h-4 w-4 fill-amber-900" : "h-4 w-4 fill-slate-700"}
+      className={active ? "h-4 w-4 fill-[#D88B74]" : "h-4 w-4 fill-slate-700"}
     >
       <path d="M9.999 2.5c.19 0 .372.078.505.216l5.5 5.75a.75.75 0 0 1-1.083 1.034L10.75 5.143V16.75a.75.75 0 0 1-1.5 0V5.143L5.079 9.5A.75.75 0 1 1 3.996 8.466l5.5-5.75A.707.707 0 0 1 10 2.5z" />
     </svg>
@@ -77,8 +77,8 @@ export default function ReviewVoteButton({
         disabled={loading}
         className={
           voted
-            ? "inline-flex h-8 w-8 items-center justify-center rounded-full bg-amber-50 ring-1 ring-amber-100"
-            : "inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 ring-1 ring-slate-200 hover:bg-slate-200"
+            ? "inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#D88B74]/15 ring-1 ring-[#D88B74]/40"
+            : "inline-flex h-8 w-8 items-center justify-center rounded-full bg-white ring-1 ring-slate-200 hover:bg-slate-50"
         }
         aria-label={voted ? "Remover concordância" : "Concordo"}
       >

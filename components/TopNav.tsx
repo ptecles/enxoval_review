@@ -25,6 +25,8 @@ export default function TopNav() {
     return queryString ? `/?${queryString}` : "/";
   }, [q, searchParams]);
 
+  if (pathname === "/login") return null;
+
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-5xl items-center gap-4 px-4 py-3">
@@ -67,6 +69,20 @@ export default function TopNav() {
             ) : null}
           </div>
         </form>
+
+        <button
+          type="button"
+          className="inline-flex flex-none items-center justify-center rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          onClick={async () => {
+            try {
+              await fetch("/api/auth/logout", { method: "POST" });
+            } finally {
+              router.push("/login");
+            }
+          }}
+        >
+          Sair
+        </button>
       </div>
     </header>
   );
