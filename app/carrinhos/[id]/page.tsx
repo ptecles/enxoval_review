@@ -3,6 +3,8 @@ import { getStrollerById, listReviewsByStrollerId } from "@/lib/data";
 import ReviewForm from "@/components/ReviewForm";
 import ReviewVoteButton from "@/components/ReviewVoteButton";
 
+export const dynamic = "force-dynamic";
+
 type Props = {
   params: { id: string };
 };

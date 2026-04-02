@@ -1,5 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import TopNav from "@/components/TopNav";
 
 export const metadata: Metadata = {
@@ -15,7 +16,9 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body className="min-h-screen bg-white">
-        <TopNav />
+        <Suspense fallback={null}>
+          <TopNav />
+        </Suspense>
         <div className="mx-auto max-w-5xl px-4 py-8">
           {children}
           <footer className="mt-12 border-t border-slate-200 pt-6 text-xs text-slate-500">

@@ -1,5 +1,7 @@
 import { listStrollers } from "@/lib/data";
 
+export const dynamic = "force-dynamic";
+
 function formatCategoryName(category: string) {
   const trimmed = (category || "").trim();
   if (!trimmed) return "Outros";
