@@ -32,6 +32,16 @@ function getTokenCache() {
   return g;
 }
 
+async function readJsonResponse<T>(res: Response, context: string): Promise<T> {
+  const contentType = res.headers.get("content-type") || "";
+  if (!contentType.includes("application/json")) {
+    const text = await res.text().catch(() => "");
+    const snippet = text.slice(0, 300);
+    throw new Error(`${context}: expected JSON but got ${contentType || "unknown"} ${snippet ? `(${snippet})` : ""}`);
+  }
+  return (await res.json()) as T;
+}
+
 async function generateHotmartToken(): Promise<HotmartToken> {
   const { clientId, clientSecret } = getEnv();
   const basic = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
@@ -50,11 +60,11 @@ async function generateHotmartToken(): Promise<HotmartToken> {
     throw new Error(`Hotmart token request failed: ${res.status} ${text}`);
   }
 
-  const data = (await res.json()) as {
+  const data = await readJsonResponse<{
     access_token: string;
     token_type?: string;
     expires_in: number;
-  };
+  }>(res, "Hotmart token response");
 
   const expiresAt = Date.now() + data.expires_in * 1000;
   const token: HotmartToken = {
@@ -96,7 +106,10 @@ async function fetchSalesByStatus(accessToken: string, email: string, status: st
     throw new Error(`Hotmart sales history failed: ${res.status} ${text} (url=${url.toString()})`);
   }
 
-  const data = (await res.json()) as { items?: SaleItem[] };
+  const data = await readJsonResponse<{ items?: SaleItem[] }>(
+    res,
+    `Hotmart sales history response (url=${url.toString()})`
+  );
   return data.items || [];
 }
 

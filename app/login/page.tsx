@@ -34,13 +34,27 @@ export default function LoginPage({
         body: JSON.stringify({ email: trimmed })
       });
 
-      const data = (await res.json()) as { success: boolean; authorized: boolean; message?: string };
+      const contentType = res.headers.get("content-type") || "";
+      const isJson = contentType.includes("application/json");
+      const payload = isJson ? await res.json() : await res.text();
 
       if (!res.ok) {
+        const message =
+          isJson && payload && typeof payload === "object" && "message" in payload
+            ? String((payload as { message?: unknown }).message || "")
+            : `Falha no login (${res.status}).`;
         setStatus("error");
-        setMessage(data?.message || "Erro ao autenticar");
+        setMessage(message || "Erro ao autenticar");
         return;
       }
+
+      if (!isJson || !payload || typeof payload !== "object") {
+        setStatus("error");
+        setMessage(`Resposta inesperada do servidor (${res.status}).`);
+        return;
+      }
+
+      const data = payload as { success: boolean; authorized: boolean; message?: string };
 
       if (!data.success || !data.authorized) {
         setStatus("error");
