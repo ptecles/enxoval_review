@@ -13,18 +13,21 @@ type SaleItem = {
   purchase_date?: string;
 };
 
-const SALES_HISTORY_URL = "https://developers.hotmart.com/payments/api/v1/sales/history";
+const DEFAULT_BASE_URL = "https://developers.hotmart.com";
+const SALES_HISTORY_PATH = "/payments/api/v1/sales/history";
+const TOKEN_ENDPOINT = "https://api-sec-vlc.hotmart.com/security/oauth/token";
 
 function getEnv() {
   const clientId = process.env.HOTMART_CLIENT_ID;
   const clientSecret = process.env.HOTMART_CLIENT_SECRET;
-  const baseUrl = process.env.HOTMART_BASE_URL;
+  const basicAuth = process.env.HOTMART_BASIC_AUTH;
+  const baseUrl = process.env.HOTMART_BASE_URL || DEFAULT_BASE_URL;
 
-  if (!clientId || !clientSecret || !baseUrl) {
-    throw new Error("Missing HOTMART_CLIENT_ID / HOTMART_CLIENT_SECRET / HOTMART_BASE_URL");
+  if (!clientId || !clientSecret) {
+    throw new Error("Missing HOTMART_CLIENT_ID / HOTMART_CLIENT_SECRET");
   }
 
-  return { clientId, clientSecret, baseUrl };
+  return { clientId, clientSecret, basicAuth, baseUrl };
 }
 
 function getTokenCache() {
@@ -33,16 +36,21 @@ function getTokenCache() {
 }
 
 async function generateHotmartToken(): Promise<HotmartToken> {
-  const { clientId, clientSecret, baseUrl } = getEnv();
-  const basic = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
+  const { clientId, clientSecret, basicAuth } = getEnv();
+  const authHeader = basicAuth
+    ? basicAuth.startsWith("Basic ")
+      ? basicAuth
+      : `Basic ${basicAuth}`
+    : `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`;
 
-  const res = await fetch(`${baseUrl}/security/oauth/token`, {
+  const tokenUrl = `${TOKEN_ENDPOINT}?grant_type=client_credentials&client_id=${encodeURIComponent(clientId)}&client_secret=${encodeURIComponent(clientSecret)}`;
+
+  const res = await fetch(tokenUrl, {
     method: "POST",
     headers: {
-      Authorization: `Basic ${basic}`,
-      "Content-Type": "application/x-www-form-urlencoded"
-    },
-    body: "grant_type=client_credentials"
+      Authorization: authHeader,
+      "Content-Type": "application/json"
+    }
   });
 
   if (!res.ok) {
@@ -78,8 +86,8 @@ async function getValidToken() {
   return token;
 }
 
-async function fetchSalesByStatus(accessToken: string, email: string, status: string): Promise<SaleItem[]> {
-  const url = new URL(SALES_HISTORY_URL);
+async function fetchSalesByStatus(baseUrl: string, accessToken: string, email: string, status: string): Promise<SaleItem[]> {
+  const url = new URL(SALES_HISTORY_PATH, baseUrl);
   url.searchParams.set("transaction_status", status);
   url.searchParams.set("buyer_email", email);
 
@@ -96,8 +104,10 @@ async function fetchSalesByStatus(accessToken: string, email: string, status: st
     throw new Error(`Hotmart sales history failed: ${res.status} ${text} (url=${url.toString()})`);
   }
 
-  const data = (await res.json()) as { items?: SaleItem[] };
-  return data.items || [];
+  const data = (await res.json()) as { items?: SaleItem[]; data?: { items?: SaleItem[] } };
+  if (Array.isArray(data?.items)) return data.items;
+  if (Array.isArray(data?.data?.items)) return data.data.items;
+  return [];
 }
 
 export async function checkEmailAuthorized(emailRaw: string) {
@@ -106,11 +116,12 @@ export async function checkEmailAuthorized(emailRaw: string) {
     return { authorized: false, message: "Email é obrigatório" } as const;
   }
 
+  const { baseUrl } = getEnv();
   const token = await getValidToken();
 
   const [completeSales, approvedSales] = await Promise.all([
-    fetchSalesByStatus(token.access_token, email, "COMPLETE"),
-    fetchSalesByStatus(token.access_token, email, "APPROVED")
+    fetchSalesByStatus(baseUrl, token.access_token, email, "COMPLETE"),
+    fetchSalesByStatus(baseUrl, token.access_token, email, "APPROVED")
   ]);
 
   const sales = [...completeSales, ...approvedSales];
