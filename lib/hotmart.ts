@@ -93,7 +93,7 @@ async function fetchSalesByStatus(accessToken: string, email: string, status: st
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`Hotmart sales history failed: ${res.status} ${text}`);
+    throw new Error(`Hotmart sales history failed: ${res.status} ${text} (url=${url.toString()})`);
   }
 
   const data = (await res.json()) as { items?: SaleItem[] };

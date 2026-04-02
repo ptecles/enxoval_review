@@ -4,6 +4,8 @@ import { z } from "zod";
 import { checkEmailAuthorized } from "@/lib/hotmart";
 import { createAuthCookieValue, getAuthCookieName } from "@/lib/auth";
 
+export const runtime = "nodejs";
+
 const BodySchema = z.object({
   email: z.string().min(1)
 });
