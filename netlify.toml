@@ -1,5 +1,11 @@
 [build]
   command = "npm run build"
+  functions = "netlify/functions"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+[[redirects]]
+  from = "/api/check-email"
+  to = "/.netlify/functions/check-email"
+  status = 200

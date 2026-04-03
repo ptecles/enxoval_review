@@ -13,8 +13,13 @@ type SaleItem = {
   purchase_date?: string;
 };
 
-const HOTMART_BASE_URL = "https://developers.hotmart.com";
-const SALES_HISTORY_URL = "https://developers.hotmart.com/payments/api/v1/sales/history";
+const HOTMART_BASE_URL = process.env.HOTMART_BASE_URL || "https://developers.hotmart.com";
+const SALES_HISTORY_URL = `${HOTMART_BASE_URL}/payments/api/v1/sales/history`;
+
+const HOTMART_DEFAULT_HEADERS: Record<string, string> = {
+  Accept: "application/json, text/plain, */*",
+  "User-Agent": "Mozilla/5.0"
+};
 
 function getEnv() {
   const clientId = process.env.HOTMART_CLIENT_ID;
@@ -49,6 +54,7 @@ async function generateHotmartToken(): Promise<HotmartToken> {
   const res = await fetch(`${HOTMART_BASE_URL}/security/oauth/token`, {
     method: "POST",
     headers: {
+      ...HOTMART_DEFAULT_HEADERS,
       Authorization: `Basic ${basic}`,
       "Content-Type": "application/x-www-form-urlencoded"
     },
@@ -95,6 +101,7 @@ async function fetchSalesByStatus(accessToken: string, email: string, status: st
 
   const res = await fetch(url.toString(), {
     headers: {
+      ...HOTMART_DEFAULT_HEADERS,
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json"
     },
