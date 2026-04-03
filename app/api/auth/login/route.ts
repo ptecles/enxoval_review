@@ -24,37 +24,58 @@ async function generateHotmartToken() {
   const HOTMART_CLIENT_SECRET = process.env.HOTMART_CLIENT_SECRET;
   const HOTMART_BASE_URL = process.env.HOTMART_BASE_URL;
 
+  console.log("[TOKEN] Env vars:", {
+    hasClientId: !!HOTMART_CLIENT_ID,
+    hasClientSecret: !!HOTMART_CLIENT_SECRET,
+    baseUrl: HOTMART_BASE_URL
+  });
+
   if (!HOTMART_CLIENT_ID || !HOTMART_CLIENT_SECRET) {
     throw new Error("Client ID e Client Secret são obrigatórios");
   }
 
-  const credentials = Buffer.from(`${HOTMART_CLIENT_ID}:${HOTMART_CLIENT_SECRET}`).toString("base64");
-
-  const response = await fetch(`${HOTMART_BASE_URL}/security/oauth/token`, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${credentials}`,
-      "Content-Type": "application/x-www-form-urlencoded"
-    },
-    body: "grant_type=client_credentials"
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Hotmart token failed: ${response.status} ${text}`);
+  if (!HOTMART_BASE_URL) {
+    throw new Error("HOTMART_BASE_URL não configurado");
   }
 
-  const tokenData = await response.json();
-  const expiresAt = Date.now() + tokenData.expires_in * 1000;
+  const credentials = Buffer.from(`${HOTMART_CLIENT_ID}:${HOTMART_CLIENT_SECRET}`).toString("base64");
+  const tokenUrl = `${HOTMART_BASE_URL}/security/oauth/token`;
 
-  currentToken = {
-    access_token: tokenData.access_token,
-    expires_at: expiresAt
-  };
+  console.log("[TOKEN] Requesting token from:", tokenUrl);
 
-  console.log("Novo token gerado com sucesso");
+  try {
+    const response = await fetch(tokenUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Basic ${credentials}`,
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: "grant_type=client_credentials"
+    });
 
-  return currentToken;
+    console.log("[TOKEN] Response status:", response.status);
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("[TOKEN] Error response:", text.slice(0, 500));
+      throw new Error(`Hotmart token failed: ${response.status} ${text.slice(0, 200)}`);
+    }
+
+    const tokenData = await response.json();
+    const expiresAt = Date.now() + tokenData.expires_in * 1000;
+
+    currentToken = {
+      access_token: tokenData.access_token,
+      expires_at: expiresAt
+    };
+
+    console.log("[TOKEN] Token gerado com sucesso, expira em:", new Date(expiresAt).toISOString());
+
+    return currentToken;
+  } catch (error) {
+    console.error("[TOKEN] Fetch error:", error);
+    throw error;
+  }
 }
 
 // Função para verificar se o token ainda é válido
@@ -86,60 +107,82 @@ async function checkEmailAuthorized(email: string) {
     return { authorized: false, message: "Email é obrigatório" } as const;
   }
 
-  console.log(`Verificando email na base da Hotmart: ${trimmedEmail}`);
+  console.log(`[CHECK] Verificando email: ${trimmedEmail}`);
 
-  const token = await getValidToken();
+  try {
+    const token = await getValidToken();
 
-  const completeUrl = new URL("https://developers.hotmart.com/payments/api/v1/sales/history");
-  completeUrl.searchParams.set("transaction_status", "COMPLETE");
-  completeUrl.searchParams.set("buyer_email", trimmedEmail);
+    if (!token.access_token) {
+      throw new Error("Token inválido após getValidToken");
+    }
 
-  const approvedUrl = new URL("https://developers.hotmart.com/payments/api/v1/sales/history");
-  approvedUrl.searchParams.set("transaction_status", "APPROVED");
-  approvedUrl.searchParams.set("buyer_email", trimmedEmail);
+    console.log("[CHECK] Token obtido, buscando sales history...");
 
-  const [completeResponse, approvedResponse] = await Promise.all([
-    fetch(completeUrl.toString(), {
-      headers: {
-        Authorization: `Bearer ${token.access_token}`,
-        "Content-Type": "application/json"
-      }
-    }),
-    fetch(approvedUrl.toString(), {
-      headers: {
-        Authorization: `Bearer ${token.access_token}`,
-        "Content-Type": "application/json"
-      }
-    })
-  ]);
+    const completeUrl = new URL("https://developers.hotmart.com/payments/api/v1/sales/history");
+    completeUrl.searchParams.set("transaction_status", "COMPLETE");
+    completeUrl.searchParams.set("buyer_email", trimmedEmail);
 
-  if (!completeResponse.ok || !approvedResponse.ok) {
-    throw new Error(
-      `Sales history failed: complete=${completeResponse.status}, approved=${approvedResponse.status}`
-    );
+    const approvedUrl = new URL("https://developers.hotmart.com/payments/api/v1/sales/history");
+    approvedUrl.searchParams.set("transaction_status", "APPROVED");
+    approvedUrl.searchParams.set("buyer_email", trimmedEmail);
+
+    console.log("[CHECK] Fetching COMPLETE from:", completeUrl.toString());
+    console.log("[CHECK] Fetching APPROVED from:", approvedUrl.toString());
+
+    const [completeResponse, approvedResponse] = await Promise.all([
+      fetch(completeUrl.toString(), {
+        headers: {
+          Authorization: `Bearer ${token.access_token}`,
+          "Content-Type": "application/json"
+        }
+      }),
+      fetch(approvedUrl.toString(), {
+        headers: {
+          Authorization: `Bearer ${token.access_token}`,
+          "Content-Type": "application/json"
+        }
+      })
+    ]);
+
+    console.log("[CHECK] Sales responses:", {
+      complete: completeResponse.status,
+      approved: approvedResponse.status
+    });
+
+    if (!completeResponse.ok || !approvedResponse.ok) {
+      const completeText = !completeResponse.ok ? await completeResponse.text() : "";
+      const approvedText = !approvedResponse.ok ? await approvedResponse.text() : "";
+      console.error("[CHECK] Sales error:", { completeText: completeText.slice(0, 200), approvedText: approvedText.slice(0, 200) });
+      throw new Error(
+        `Sales history failed: complete=${completeResponse.status}, approved=${approvedResponse.status}`
+      );
+    }
+
+    const completeData = await completeResponse.json();
+    const approvedData = await approvedResponse.json();
+
+    const completeSales = completeData?.items || [];
+    const approvedSales = approvedData?.items || [];
+    const sales = [...completeSales, ...approvedSales];
+
+    console.log(`[CHECK] Encontradas ${sales.length} vendas para o email: ${trimmedEmail}`);
+
+    if (sales.length === 0) {
+      return { authorized: false, message: "Email não encontrado na base de clientes" } as const;
+    }
+
+    const user = {
+      email: trimmedEmail,
+      name: sales[0]?.buyer?.name || "Usuário",
+      totalPurchases: sales.length,
+      lastPurchase: sales[0]?.purchase_date || null
+    };
+
+    return { authorized: true, user } as const;
+  } catch (error) {
+    console.error("[CHECK] Error in checkEmailAuthorized:", error);
+    throw error;
   }
-
-  const completeData = await completeResponse.json();
-  const approvedData = await approvedResponse.json();
-
-  const completeSales = completeData?.items || [];
-  const approvedSales = approvedData?.items || [];
-  const sales = [...completeSales, ...approvedSales];
-
-  console.log(`Encontradas ${sales.length} vendas para o email: ${trimmedEmail}`);
-
-  if (sales.length === 0) {
-    return { authorized: false, message: "Email não encontrado na base de clientes" } as const;
-  }
-
-  const user = {
-    email: trimmedEmail,
-    name: sales[0]?.buyer?.name || "Usuário",
-    totalPurchases: sales.length,
-    lastPurchase: sales[0]?.purchase_date || null
-  };
-
-  return { authorized: true, user } as const;
 }
 
 export async function POST(req: Request) {
