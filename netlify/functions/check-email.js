@@ -6,13 +6,13 @@ let currentToken = {
 function getEnv() {
   const clientId = process.env.HOTMART_CLIENT_ID;
   const clientSecret = process.env.HOTMART_CLIENT_SECRET;
-  const baseUrl = process.env.HOTMART_BASE_URL || "https://developers.hotmart.com";
+  const securityBaseUrl = process.env.HOTMART_BASE_URL || "https://api-sec-vlc.hotmart.com";
 
   if (!clientId || !clientSecret) {
     throw new Error("Missing HOTMART_CLIENT_ID / HOTMART_CLIENT_SECRET");
   }
 
-  return { clientId, clientSecret, baseUrl };
+  return { clientId, clientSecret, securityBaseUrl };
 }
 
 function isTokenValid() {
@@ -33,10 +33,10 @@ async function readJson(res, context) {
 }
 
 async function generateHotmartToken() {
-  const { clientId, clientSecret, baseUrl } = getEnv();
+  const { clientId, clientSecret, securityBaseUrl } = getEnv();
 
   const basic = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-  const res = await fetch(`${baseUrl}/security/oauth/token`, {
+  const res = await fetch(`${securityBaseUrl}/security/oauth/token`, {
     method: "POST",
     headers: {
       Accept: "application/json, text/plain, */*",
@@ -70,8 +70,7 @@ async function getValidToken() {
 }
 
 async function fetchSalesByStatus(accessToken, email, status) {
-  const { baseUrl } = getEnv();
-  const url = new URL(`${baseUrl}/payments/api/v1/sales/history`);
+  const url = new URL(`https://developers.hotmart.com/payments/api/v1/sales/history`);
   url.searchParams.set("transaction_status", status);
   url.searchParams.set("buyer_email", email);
 
