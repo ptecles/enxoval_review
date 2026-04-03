@@ -5,6 +5,9 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
+[functions]
+  node_bundler = "esbuild"
+
 [[redirects]]
   from = "/api/check-email"
   to = "/.netlify/functions/check-email"

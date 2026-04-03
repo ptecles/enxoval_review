@@ -1,164 +1,211 @@
+const axios = require('axios');
+
+// Variável para armazenar o token atual
 let currentToken = {
   access_token: null,
   expires_at: null
 };
 
-function getEnv() {
-  const clientId = process.env.HOTMART_CLIENT_ID;
-  const clientSecret = process.env.HOTMART_CLIENT_SECRET;
-  const securityBaseUrl = process.env.HOTMART_BASE_URL || "https://api-sec-vlc.hotmart.com";
-
-  if (!clientId || !clientSecret) {
-    throw new Error("Missing HOTMART_CLIENT_ID / HOTMART_CLIENT_SECRET");
-  }
-
-  return { clientId, clientSecret, securityBaseUrl };
-}
-
-function isTokenValid() {
-  if (!currentToken.access_token || !currentToken.expires_at) return false;
-
-  const marginMs = 5 * 60 * 1000;
-  return Date.now() < currentToken.expires_at - marginMs;
-}
-
-async function readJson(res, context) {
-  const contentType = res.headers.get("content-type") || "";
-  if (!contentType.includes("application/json")) {
-    const text = await res.text().catch(() => "");
-    const snippet = text.slice(0, 300);
-    throw new Error(`${context}: expected JSON but got ${contentType || "unknown"} ${snippet ? `(${snippet})` : ""}`);
-  }
-  return res.json();
-}
-
+// Função para gerar novo access token da Hotmart - IGUAL AO EXPRESS
 async function generateHotmartToken() {
-  const { clientId, clientSecret, securityBaseUrl } = getEnv();
+  try {
+    const { HOTMART_CLIENT_ID, HOTMART_CLIENT_SECRET, HOTMART_BASE_URL } = process.env;
+    
+    if (!HOTMART_CLIENT_ID || !HOTMART_CLIENT_SECRET) {
+      throw new Error('Client ID e Client Secret são obrigatórios');
+    }
 
-  const basic = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-  const res = await fetch(`${securityBaseUrl}/security/oauth/token`, {
-    method: "POST",
-    headers: {
-      Accept: "application/json, text/plain, */*",
-      "User-Agent": "Mozilla/5.0",
-      Authorization: `Basic ${basic}`,
-      "Content-Type": "application/x-www-form-urlencoded"
-    },
-    body: "grant_type=client_credentials"
-  });
+    const credentials = Buffer.from(`${HOTMART_CLIENT_ID}:${HOTMART_CLIENT_SECRET}`).toString('base64');
+    
+    const response = await axios.post(
+      `${HOTMART_BASE_URL}/security/oauth/token`,
+      'grant_type=client_credentials',
+      {
+        headers: {
+          'Authorization': `Basic ${credentials}`,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }
+    );
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Hotmart token request failed: ${res.status} ${text}`);
+    const tokenData = response.data;
+    const expiresAt = new Date(Date.now() + (tokenData.expires_in * 1000));
+    
+    currentToken = {
+      access_token: tokenData.access_token,
+      expires_at: expiresAt,
+      token_type: tokenData.token_type,
+      expires_in: tokenData.expires_in
+    };
+
+    console.log('Novo token gerado com sucesso:', { 
+      expires_at: currentToken.expires_at, 
+      expires_in: tokenData.expires_in 
+    });
+    
+    return currentToken;
+  } catch (error) {
+    console.error('Erro ao gerar token:', error.response?.data || error.message);
+    throw error;
   }
-
-  const data = await readJson(res, "Hotmart token response");
-
-  currentToken = {
-    access_token: data.access_token,
-    expires_at: Date.now() + data.expires_in * 1000
-  };
-
-  return currentToken;
 }
 
+// Função para verificar se o token ainda é válido - IGUAL AO EXPRESS
+function isTokenValid() {
+  if (!currentToken.access_token || !currentToken.expires_at) {
+    return false;
+  }
+  
+  const now = new Date();
+  const expiresAt = new Date(currentToken.expires_at);
+  const marginMinutes = 5; // Margem de 5 minutos
+  const expiresWithMargin = new Date(expiresAt.getTime() - (marginMinutes * 60 * 1000));
+  
+  return now < expiresWithMargin;
+}
+
+// Função para obter token válido - IGUAL AO EXPRESS
 async function getValidToken() {
   if (!isTokenValid()) {
-    return generateHotmartToken();
+    console.log('Token expirado ou inválido, gerando novo token...');
+    await generateHotmartToken();
+  } else {
+    console.log('Token atual ainda é válido');
   }
+  
   return currentToken;
 }
 
-async function fetchSalesByStatus(accessToken, email, status) {
-  const url = new URL(`https://developers.hotmart.com/payments/api/v1/sales/history`);
-  url.searchParams.set("transaction_status", status);
-  url.searchParams.set("buyer_email", email);
-
-  const res = await fetch(url.toString(), {
-    headers: {
-      Accept: "application/json, text/plain, */*",
-      "User-Agent": "Mozilla/5.0",
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json"
-    }
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Hotmart sales history failed: ${res.status} ${text} (url=${url.toString()})`);
-  }
-
-  const data = await readJson(res, `Hotmart sales history response (url=${url.toString()})`);
-  return data.items || [];
-}
-
-exports.handler = async (event) => {
+// Handler da Netlify Function
+exports.handler = async (event, context) => {
+  // Configurar CORS
   const headers = {
-    "Content-Type": "application/json",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS"
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
   };
 
-  if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 200, headers, body: "" };
+  // Lidar com preflight OPTIONS request
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
   }
 
-  if (event.httpMethod !== "POST") {
+  // Apenas aceitar POST requests
+  if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
       headers,
-      body: JSON.stringify({ success: false, authorized: false, message: "Método não permitido" })
+      body: JSON.stringify({
+        success: false,
+        error: 'Método não permitido'
+      })
     };
   }
 
   try {
-    const parsed = event.body ? JSON.parse(event.body) : {};
-    const emailRaw = typeof parsed.email === "string" ? parsed.email : "";
-    const email = emailRaw.trim().toLowerCase();
-
+    const { email } = JSON.parse(event.body);
+    
     if (!email) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ success: false, authorized: false, message: "Email é obrigatório" })
+        body: JSON.stringify({
+          success: false,
+          error: 'Email é obrigatório'
+        })
       };
     }
 
+    console.log(`Verificando email na base da Hotmart: ${email}`);
+    
     const token = await getValidToken();
-
-    const [completeSales, approvedSales] = await Promise.all([
-      fetchSalesByStatus(token.access_token, email, "COMPLETE"),
-      fetchSalesByStatus(token.access_token, email, "APPROVED")
+    
+    // Buscar histórico de vendas para status COMPLETE e APPROVED
+    const trimmedEmail = email.toLowerCase().trim();
+    
+    const [completeResponse, approvedResponse] = await Promise.all([
+      axios.get('https://developers.hotmart.com/payments/api/v1/sales/history', {
+        headers: {
+          'Authorization': `Bearer ${token.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        params: {
+          transaction_status: 'COMPLETE',
+          buyer_email: trimmedEmail
+        }
+      }),
+      axios.get('https://developers.hotmart.com/payments/api/v1/sales/history', {
+        headers: {
+          'Authorization': `Bearer ${token.access_token}`,
+          'Content-Type': 'application/json'
+        },
+        params: {
+          transaction_status: 'APPROVED',
+          buyer_email: trimmedEmail
+        }
+      })
     ]);
 
+    // Combinar resultados de ambas as consultas
+    const completeSales = completeResponse.data?.items || [];
+    const approvedSales = approvedResponse.data?.items || [];
     const sales = [...completeSales, ...approvedSales];
-    if (sales.length === 0) {
+    console.log(`Encontradas ${sales.length} vendas para o email: ${email}`);
+    
+    // Se encontrou vendas, o email existe
+    const emailExists = sales.length > 0;
+
+    if (emailExists) {
+      // Já temos as vendas filtradas do usuário
+      const userSales = sales;
+      
+      const userData = {
+        email: email,
+        name: userSales[0]?.buyer?.name || 'Usuário',
+        totalPurchases: userSales.length,
+        lastPurchase: userSales[0]?.purchase_date
+      };
+
+      console.log(`Email encontrado: ${email}`);
+      
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify({ success: false, authorized: false, message: "Email não encontrado na base de clientes" })
+        body: JSON.stringify({
+          success: true,
+          message: 'Email encontrado na base da Hotmart',
+          user: userData,
+          authorized: true
+        })
+      };
+    } else {
+      console.log(`Email não encontrado: ${email}`);
+      
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          success: false,
+          message: 'Email não encontrado na base de clientes',
+          authorized: false
+        })
       };
     }
-
-    const user = {
-      email,
-      name: sales[0]?.buyer?.name || "Usuário",
-      totalPurchases: sales.length,
-      lastPurchase: sales[0]?.purchase_date || null
-    };
-
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({ success: true, authorized: true, user })
-    };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Erro interno";
+    
+  } catch (error) {
+    console.error('Erro ao verificar email:', error.response?.data || error.message);
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ success: false, authorized: false, message })
+      body: JSON.stringify({
+        success: false,
+        error: error.response?.data || error.message,
+        authorized: false
+      })
     };
   }
 };
