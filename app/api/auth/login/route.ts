@@ -31,6 +31,14 @@ export async function POST(req: Request) {
     const isJson = contentType.includes("application/json");
     const payload = isJson ? await res.json() : await res.text();
 
+    console.log("[LOGIN DEBUG]", {
+      status: res.status,
+      contentType,
+      isJson,
+      payloadType: typeof payload,
+      payloadPreview: typeof payload === "string" ? payload.slice(0, 200) : JSON.stringify(payload).slice(0, 200)
+    });
+
     if (!res.ok) {
       const message =
         isJson && payload && typeof payload === "object" && "message" in payload
@@ -44,7 +52,7 @@ export async function POST(req: Request) {
 
     if (!isJson || !payload || typeof payload !== "object") {
       return NextResponse.json(
-        { success: false, authorized: false, message: `Resposta inesperada ao verificar email (${res.status}).` },
+        { success: false, authorized: false, message: `Resposta inesperada ao verificar email (${res.status}). ContentType: ${contentType}, PayloadType: ${typeof payload}` },
         { status: 200 }
       );
     }
