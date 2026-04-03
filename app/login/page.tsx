@@ -74,6 +74,9 @@ export default function LoginPage({
     <main className="min-h-[100dvh] bg-white px-4 py-10">
       <div className="mx-auto w-full max-w-5xl space-y-8">
         <section className="py-2 text-center">
+          <div className="flex justify-center mb-4">
+            <img src="/images/logo.png" alt="Logo" className="h-16 w-auto" />
+          </div>
           <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Carrinhos de bebê</h1>
           <p className="mt-2 text-base text-slate-600">
             Encontre um carrinho e veja reviews reais da comunidade
@@ -82,7 +85,7 @@ export default function LoginPage({
 
         <div className="mx-auto w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-2xl font-semibold text-slate-900">Entrar</h2>
-          <p className="mt-2 text-sm text-slate-600">Digite o email usado na hotmart para acessar</p>
+          <p className="mt-2 text-sm text-slate-600">Faça login usando o mesmo e-mail cadastrado na Hotmart</p>
 
           <form onSubmit={onSubmit} className="mt-6 space-y-4">
             <div className="space-y-2">
@@ -111,6 +114,10 @@ export default function LoginPage({
             {message ? <div className="text-sm text-red-600">{message}</div> : null}
           </form>
         </div>
+
+        <footer className="text-center">
+          <p className="text-sm text-slate-500">Acesso restrito às alunas do Enxoval Inteligente</p>
+        </footer>
       </div>
     </main>
   );
