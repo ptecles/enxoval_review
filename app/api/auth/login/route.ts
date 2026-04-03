@@ -9,10 +9,137 @@ const BodySchema = z.object({
   email: z.string().min(1)
 });
 
-function getBaseUrl(req: Request) {
-  const fromEnv = process.env.URL || process.env.DEPLOY_URL;
-  if (fromEnv) return fromEnv.startsWith("http") ? fromEnv : `https://${fromEnv}`;
-  return new URL(req.url).origin;
+// Variável para armazenar o token atual
+let currentToken: {
+  access_token: string | null;
+  expires_at: number | null;
+} = {
+  access_token: null,
+  expires_at: null
+};
+
+// Função para gerar novo access token da Hotmart
+async function generateHotmartToken() {
+  const HOTMART_CLIENT_ID = process.env.HOTMART_CLIENT_ID;
+  const HOTMART_CLIENT_SECRET = process.env.HOTMART_CLIENT_SECRET;
+  const HOTMART_BASE_URL = process.env.HOTMART_BASE_URL;
+
+  if (!HOTMART_CLIENT_ID || !HOTMART_CLIENT_SECRET) {
+    throw new Error("Client ID e Client Secret são obrigatórios");
+  }
+
+  const credentials = Buffer.from(`${HOTMART_CLIENT_ID}:${HOTMART_CLIENT_SECRET}`).toString("base64");
+
+  const response = await fetch(`${HOTMART_BASE_URL}/security/oauth/token`, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${credentials}`,
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: "grant_type=client_credentials"
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Hotmart token failed: ${response.status} ${text}`);
+  }
+
+  const tokenData = await response.json();
+  const expiresAt = Date.now() + tokenData.expires_in * 1000;
+
+  currentToken = {
+    access_token: tokenData.access_token,
+    expires_at: expiresAt
+  };
+
+  console.log("Novo token gerado com sucesso");
+
+  return currentToken;
+}
+
+// Função para verificar se o token ainda é válido
+function isTokenValid() {
+  if (!currentToken.access_token || !currentToken.expires_at) {
+    return false;
+  }
+
+  const marginMs = 5 * 60 * 1000;
+  return Date.now() < currentToken.expires_at - marginMs;
+}
+
+// Função para obter token válido
+async function getValidToken() {
+  if (!isTokenValid()) {
+    console.log("Token expirado ou inválido, gerando novo token...");
+    await generateHotmartToken();
+  } else {
+    console.log("Token atual ainda é válido");
+  }
+
+  return currentToken;
+}
+
+async function checkEmailAuthorized(email: string) {
+  const trimmedEmail = email.toLowerCase().trim();
+
+  if (!trimmedEmail) {
+    return { authorized: false, message: "Email é obrigatório" } as const;
+  }
+
+  console.log(`Verificando email na base da Hotmart: ${trimmedEmail}`);
+
+  const token = await getValidToken();
+
+  const completeUrl = new URL("https://developers.hotmart.com/payments/api/v1/sales/history");
+  completeUrl.searchParams.set("transaction_status", "COMPLETE");
+  completeUrl.searchParams.set("buyer_email", trimmedEmail);
+
+  const approvedUrl = new URL("https://developers.hotmart.com/payments/api/v1/sales/history");
+  approvedUrl.searchParams.set("transaction_status", "APPROVED");
+  approvedUrl.searchParams.set("buyer_email", trimmedEmail);
+
+  const [completeResponse, approvedResponse] = await Promise.all([
+    fetch(completeUrl.toString(), {
+      headers: {
+        Authorization: `Bearer ${token.access_token}`,
+        "Content-Type": "application/json"
+      }
+    }),
+    fetch(approvedUrl.toString(), {
+      headers: {
+        Authorization: `Bearer ${token.access_token}`,
+        "Content-Type": "application/json"
+      }
+    })
+  ]);
+
+  if (!completeResponse.ok || !approvedResponse.ok) {
+    throw new Error(
+      `Sales history failed: complete=${completeResponse.status}, approved=${approvedResponse.status}`
+    );
+  }
+
+  const completeData = await completeResponse.json();
+  const approvedData = await approvedResponse.json();
+
+  const completeSales = completeData?.items || [];
+  const approvedSales = approvedData?.items || [];
+  const sales = [...completeSales, ...approvedSales];
+
+  console.log(`Encontradas ${sales.length} vendas para o email: ${trimmedEmail}`);
+
+  if (sales.length === 0) {
+    return { authorized: false, message: "Email não encontrado na base de clientes" } as const;
+  }
+
+  const user = {
+    email: trimmedEmail,
+    name: sales[0]?.buyer?.name || "Usuário",
+    totalPurchases: sales.length,
+    lastPurchase: sales[0]?.purchase_date || null
+  };
+
+  return { authorized: true, user } as const;
 }
 
 export async function POST(req: Request) {
@@ -20,58 +147,16 @@ export async function POST(req: Request) {
     const json = await req.json();
     const body = BodySchema.parse(json);
 
-    const baseUrl = getBaseUrl(req);
-    const res = await fetch(`${baseUrl}/api/check-email`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: body.email })
-    });
+    const result = await checkEmailAuthorized(body.email);
 
-    const contentType = res.headers.get("content-type") || "";
-    const isJson = contentType.includes("application/json");
-    const payload = isJson ? await res.json() : await res.text();
-
-    console.log("[LOGIN DEBUG]", {
-      status: res.status,
-      contentType,
-      isJson,
-      payloadType: typeof payload,
-      payloadPreview: typeof payload === "string" ? payload.slice(0, 200) : JSON.stringify(payload).slice(0, 200)
-    });
-
-    if (!res.ok) {
-      const message =
-        isJson && payload && typeof payload === "object" && "message" in payload
-          ? String((payload as { message?: unknown }).message || "")
-          : `Falha ao verificar email (${res.status}).`;
+    if (!result.authorized) {
       return NextResponse.json(
-        { success: false, authorized: false, message },
+        { success: false, authorized: false, message: result.message || "Email não autorizado" },
         { status: 200 }
       );
     }
 
-    if (!isJson || !payload || typeof payload !== "object") {
-      return NextResponse.json(
-        { success: false, authorized: false, message: `Resposta inesperada ao verificar email (${res.status}). ContentType: ${contentType}, PayloadType: ${typeof payload}` },
-        { status: 200 }
-      );
-    }
-
-    const data = payload as {
-      success?: boolean;
-      authorized?: boolean;
-      message?: string;
-      user?: { email: string; name?: string | null };
-    };
-
-    if (!data.success || !data.authorized || !data.user?.email) {
-      return NextResponse.json(
-        { success: false, authorized: false, message: data.message || "Email não autorizado" },
-        { status: 200 }
-      );
-    }
-
-    const cookieValue = createAuthCookieValue({ email: data.user.email, name: data.user.name }, 60 * 60 * 24 * 30);
+    const cookieValue = createAuthCookieValue({ email: result.user.email, name: result.user.name }, 60 * 60 * 24 * 30);
     const cookieName = getAuthCookieName();
 
     cookies().set(cookieName, cookieValue, {
@@ -82,9 +167,10 @@ export async function POST(req: Request) {
       maxAge: 60 * 60 * 24 * 30
     });
 
-    return NextResponse.json({ success: true, authorized: true, user: data.user }, { status: 200 });
+    return NextResponse.json({ success: true, authorized: true, user: result.user }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro interno";
+    console.error("Erro no login:", message);
     return NextResponse.json({ success: false, authorized: false, message }, { status: 500 });
   }
 }
