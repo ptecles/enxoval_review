@@ -1,12 +1,10 @@
-const axios = require('axios');
-
 // Variável para armazenar o token atual
 let currentToken = {
   access_token: null,
   expires_at: null
 };
 
-// Função para gerar novo access token da Hotmart - IGUAL AO EXPRESS
+// Função para gerar novo access token da Hotmart
 async function generateHotmartToken() {
   try {
     const { HOTMART_CLIENT_ID, HOTMART_CLIENT_SECRET, HOTMART_BASE_URL } = process.env;
@@ -17,18 +15,21 @@ async function generateHotmartToken() {
 
     const credentials = Buffer.from(`${HOTMART_CLIENT_ID}:${HOTMART_CLIENT_SECRET}`).toString('base64');
     
-    const response = await axios.post(
-      `${HOTMART_BASE_URL}/security/oauth/token`,
-      'grant_type=client_credentials',
-      {
-        headers: {
-          'Authorization': `Basic ${credentials}`,
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
-      }
-    );
+    const response = await fetch(`${HOTMART_BASE_URL}/security/oauth/token`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${credentials}`,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: 'grant_type=client_credentials'
+    });
 
-    const tokenData = response.data;
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Hotmart token failed: ${response.status} ${text}`);
+    }
+
+    const tokenData = await response.json();
     const expiresAt = new Date(Date.now() + (tokenData.expires_in * 1000));
     
     currentToken = {
@@ -45,7 +46,7 @@ async function generateHotmartToken() {
     
     return currentToken;
   } catch (error) {
-    console.error('Erro ao gerar token:', error.response?.data || error.message);
+    console.error('Erro ao gerar token:', error.message);
     throw error;
   }
 }
@@ -127,32 +128,39 @@ exports.handler = async (event, context) => {
     // Buscar histórico de vendas para status COMPLETE e APPROVED
     const trimmedEmail = email.toLowerCase().trim();
     
+    const completeUrl = new URL('https://developers.hotmart.com/payments/api/v1/sales/history');
+    completeUrl.searchParams.set('transaction_status', 'COMPLETE');
+    completeUrl.searchParams.set('buyer_email', trimmedEmail);
+
+    const approvedUrl = new URL('https://developers.hotmart.com/payments/api/v1/sales/history');
+    approvedUrl.searchParams.set('transaction_status', 'APPROVED');
+    approvedUrl.searchParams.set('buyer_email', trimmedEmail);
+
     const [completeResponse, approvedResponse] = await Promise.all([
-      axios.get('https://developers.hotmart.com/payments/api/v1/sales/history', {
+      fetch(completeUrl.toString(), {
         headers: {
           'Authorization': `Bearer ${token.access_token}`,
           'Content-Type': 'application/json'
-        },
-        params: {
-          transaction_status: 'COMPLETE',
-          buyer_email: trimmedEmail
         }
       }),
-      axios.get('https://developers.hotmart.com/payments/api/v1/sales/history', {
+      fetch(approvedUrl.toString(), {
         headers: {
           'Authorization': `Bearer ${token.access_token}`,
           'Content-Type': 'application/json'
-        },
-        params: {
-          transaction_status: 'APPROVED',
-          buyer_email: trimmedEmail
         }
       })
     ]);
 
+    if (!completeResponse.ok || !approvedResponse.ok) {
+      throw new Error(`Sales history failed: complete=${completeResponse.status}, approved=${approvedResponse.status}`);
+    }
+
+    const completeData = await completeResponse.json();
+    const approvedData = await approvedResponse.json();
+
     // Combinar resultados de ambas as consultas
-    const completeSales = completeResponse.data?.items || [];
-    const approvedSales = approvedResponse.data?.items || [];
+    const completeSales = completeData?.items || [];
+    const approvedSales = approvedData?.items || [];
     const sales = [...completeSales, ...approvedSales];
     console.log(`Encontradas ${sales.length} vendas para o email: ${email}`);
     
