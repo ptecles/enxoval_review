@@ -22,7 +22,7 @@ let currentToken: {
 async function generateHotmartToken() {
   const HOTMART_CLIENT_ID = process.env.HOTMART_CLIENT_ID;
   const HOTMART_CLIENT_SECRET = process.env.HOTMART_CLIENT_SECRET;
-  const HOTMART_BASE_URL = process.env.HOTMART_BASE_URL;
+  const HOTMART_BASE_URL = process.env.HOTMART_BASE_URL || "https://api-sec-vlc.hotmart.com";
 
   console.log("[TOKEN] Env vars:", {
     hasClientId: !!HOTMART_CLIENT_ID,
@@ -31,11 +31,7 @@ async function generateHotmartToken() {
   });
 
   if (!HOTMART_CLIENT_ID || !HOTMART_CLIENT_SECRET) {
-    throw new Error("Client ID e Client Secret são obrigatórios");
-  }
-
-  if (!HOTMART_BASE_URL) {
-    throw new Error("HOTMART_BASE_URL não configurado");
+    throw new Error("HOTMART_CLIENT_ID ou HOTMART_CLIENT_SECRET não configurados no Netlify");
   }
 
   const credentials = Buffer.from(`${HOTMART_CLIENT_ID}:${HOTMART_CLIENT_SECRET}`).toString("base64");
@@ -190,6 +186,8 @@ export async function POST(req: Request) {
     const json = await req.json();
     const body = BodySchema.parse(json);
 
+    console.log("[LOGIN] Iniciando verificação para:", body.email);
+
     const result = await checkEmailAuthorized(body.email);
 
     if (!result.authorized) {
@@ -210,10 +208,23 @@ export async function POST(req: Request) {
       maxAge: 60 * 60 * 24 * 30
     });
 
+    console.log("[LOGIN] Login bem-sucedido para:", result.user.email);
+
     return NextResponse.json({ success: true, authorized: true, user: result.user }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro interno";
-    console.error("Erro no login:", message);
-    return NextResponse.json({ success: false, authorized: false, message }, { status: 500 });
+    console.error("[LOGIN] Erro no login:", message, err);
+    
+    // Retornar mensagem mais específica
+    let userMessage = message;
+    if (message.includes("HOTMART_CLIENT_ID") || message.includes("HOTMART_CLIENT_SECRET")) {
+      userMessage = "Erro de configuração: variáveis de ambiente não configuradas no Netlify";
+    } else if (message.includes("token failed")) {
+      userMessage = "Erro ao obter token da Hotmart. Verifique as credenciais.";
+    } else if (message.includes("Sales history failed")) {
+      userMessage = "Erro ao buscar histórico de vendas na Hotmart";
+    }
+    
+    return NextResponse.json({ success: false, authorized: false, message: userMessage }, { status: 200 });
   }
 }
