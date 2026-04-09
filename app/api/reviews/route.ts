@@ -26,10 +26,12 @@ export async function POST(req: Request) {
     const raw = cookies().get(cookieName)?.value;
     const session = verifyAuthCookieValue(raw);
     const sessionName = (session?.name || "").trim();
+    const sessionEmail = session?.email || null;
 
     const review = await createReview({
       ...parsed.data,
-      authorName: sessionName || parsed.data.authorName || "Usuária"
+      authorName: sessionName || parsed.data.authorName || "Usuária",
+      authorEmail: sessionEmail || undefined
     });
     return NextResponse.json({ review });
   } catch (err) {

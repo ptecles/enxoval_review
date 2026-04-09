@@ -128,7 +128,7 @@ export default function ReviewForm({ strollerId }: { strollerId: string }) {
         disabled={status === "loading" || rating < 1}
         className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
       >
-        {status === "loading" ? "Enviando..." : "Publicar"}
+        {status === "loading" ? "Salvando..." : "Publicar"}
       </button>
 
       {status === "error" ? (

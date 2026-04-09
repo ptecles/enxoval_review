@@ -219,7 +219,7 @@ export async function listReviewsByStrollerId(strollerId: string): Promise<Revie
 
   const { data, error } = await supabase
     .from("reviews")
-    .select("id, stroller_id, author_name, rating, text, created_at, votes_count, helpful_count, features")
+    .select("id, stroller_id, author_name, author_email, rating, text, created_at, votes_count, helpful_count, features")
     .eq("stroller_id", decoded)
     .order("votes_count", { ascending: false })
     .order("created_at", { ascending: false });
@@ -231,6 +231,7 @@ export async function listReviewsByStrollerId(strollerId: string): Promise<Revie
     id: String(r.id),
     strollerId: String(r.stroller_id),
     authorName: String(r.author_name),
+    authorEmail: r.author_email ? String(r.author_email) : null,
     rating: Number(r.rating),
     text: String(r.text),
     createdAt: String(r.created_at),
@@ -243,17 +244,20 @@ export async function listReviewsByStrollerId(strollerId: string): Promise<Revie
 export async function createReview(input: {
   strollerId: string;
   authorName?: string;
+  authorEmail?: string;
   rating: number;
   text: string;
   features?: string[];
 }): Promise<Review> {
   const authorName = (input.authorName || "").trim() || "Usuária";
+  const authorEmail = (input.authorEmail || "").trim() || null;
   const features = Array.isArray(input.features)
     ? input.features.map((x) => String(x).trim()).filter(Boolean)
     : [];
   const payload = {
     stroller_id: decodeURIComponent(input.strollerId),
     author_name: authorName,
+    author_email: authorEmail,
     rating: input.rating,
     text: input.text.trim(),
     features
@@ -263,7 +267,7 @@ export async function createReview(input: {
   const { data, error } = await supabase
     .from("reviews")
     .insert(payload)
-    .select("id, stroller_id, author_name, rating, text, created_at, votes_count, helpful_count, features")
+    .select("id, stroller_id, author_name, author_email, rating, text, created_at, votes_count, helpful_count, features")
     .single();
 
   if (error) throw new Error(error.message);
@@ -273,6 +277,7 @@ export async function createReview(input: {
     id: String(data.id),
     strollerId: String(data.stroller_id),
     authorName: String(data.author_name),
+    authorEmail: (data as any).author_email ? String((data as any).author_email) : null,
     rating: Number(data.rating),
     text: String(data.text),
     createdAt: String(data.created_at),
@@ -280,4 +285,38 @@ export async function createReview(input: {
     helpfulCount: Number(data.helpful_count || 0),
     features: Array.isArray((data as any).features) ? (data as any).features.map((x: any) => String(x)) : []
   };
+}
+
+export async function getReviewById(id: string): Promise<Review | null> {
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("reviews")
+    .select("id, stroller_id, author_name, author_email, rating, text, created_at, votes_count, helpful_count, features")
+    .eq("id", id)
+    .single();
+
+  if (error || !data) return null;
+
+  return {
+    id: String(data.id),
+    strollerId: String(data.stroller_id),
+    authorName: String(data.author_name),
+    authorEmail: (data as any).author_email ? String((data as any).author_email) : null,
+    rating: Number(data.rating),
+    text: String(data.text),
+    createdAt: String(data.created_at),
+    votesCount: Number(data.votes_count || 0),
+    helpfulCount: Number(data.helpful_count || 0),
+    features: Array.isArray((data as any).features) ? (data as any).features.map((x: any) => String(x)) : []
+  };
+}
+
+export async function deleteReview(id: string): Promise<void> {
+  const supabase = getSupabaseAdminClient();
+  const { error } = await supabase
+    .from("reviews")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw new Error(error.message);
 }

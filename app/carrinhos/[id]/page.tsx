@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
 import { getStrollerById, listReviewsByStrollerId } from "@/lib/data";
+import { getAuthCookieName, verifyAuthCookieValue } from "@/lib/auth";
 import ReviewForm from "@/components/ReviewForm";
-import ReviewVoteButton from "@/components/ReviewVoteButton";
+import ReviewItem from "@/components/ReviewItem";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +14,11 @@ type Props = {
 export default async function StrollerPage({ params }: Props) {
   const stroller = await getStrollerById(params.id);
   if (!stroller) notFound();
+
+  const cookieName = getAuthCookieName();
+  const raw = cookies().get(cookieName)?.value;
+  const session = verifyAuthCookieValue(raw);
+  const currentUserEmail = session?.email || null;
 
   const reviews = await listReviewsByStrollerId(stroller.id);
 
@@ -109,34 +116,7 @@ export default async function StrollerPage({ params }: Props) {
           <h2 className="text-lg font-semibold text-slate-900">Reviews</h2>
           <div className="mt-4 space-y-4">
             {reviews.map((r) => (
-              <article key={r.id} className="relative rounded-xl border border-slate-200 p-4 pb-12">
-                <header className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-900">{r.authorName}</p>
-                    <p className="text-xs text-slate-500">{new Date(r.createdAt).toLocaleDateString("pt-BR")}</p>
-                  </div>
-                  <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-950 ring-1 ring-amber-200">
-                    {r.rating}/5
-                  </span>
-                </header>
-                <p className="mt-3 whitespace-pre-wrap text-sm text-slate-700">{r.text}</p>
-                {r.features.length > 0 ? (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {r.features.map((f) => (
-                      <span
-                        key={f}
-                        className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700"
-                      >
-                        {f}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-
-                <div className="absolute bottom-3 right-3">
-                  <ReviewVoteButton reviewId={r.id} initialCount={r.votesCount} />
-                </div>
-              </article>
+              <ReviewItem key={r.id} review={r} currentUserEmail={currentUserEmail} />
             ))}
             {reviews.length === 0 ? (
               <div className="text-sm text-slate-600">Ainda não há reviews.</div>

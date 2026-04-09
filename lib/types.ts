@@ -13,6 +13,7 @@ export type Review = {
   id: string;
   strollerId: string;
   authorName: string;
+  authorEmail: string | null;
   rating: number;
   text: string;
   createdAt: string;
