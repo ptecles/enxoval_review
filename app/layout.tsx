@@ -4,8 +4,8 @@ import { Suspense } from "react";
 import TopNav from "@/components/TopNav";
 
 export const metadata: Metadata = {
-  title: "Reviews de Carrinhos",
-  description: "Leia e escreva reviews de carrinhos de bebê"
+  title: "Enxoval Inteligente",
+  description: "Portal de ferramentas para o enxoval do seu bebê"
 };
 
 export default function RootLayout({
