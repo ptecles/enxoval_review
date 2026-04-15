@@ -14,5 +14,5 @@ export default async function PortalPage() {
     redirect("/login");
   }
 
-  return <PortalDashboard userEmail={session.email} userName={session.name} />;
+  return <PortalDashboard userEmail={session.email} userName={session.name || "Usuária"} />;
 }
