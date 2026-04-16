@@ -14,7 +14,7 @@ type Site = {
 const SITES: Site[] = [
   {
     id: "calculadora",
-    name: "Calculadora de Enxoval",
+    name: "Calculadora de Pijama",
     description: "Calcule o que seu bebê deve vestir para dormir",
     url: "https://enxovalinteligentecalculadora.netlify.app",
     icon: "",
@@ -118,12 +118,18 @@ export default function PortalDashboard({ userEmail, userName }: PortalDashboard
           <p className="text-sm text-slate-500">
             Logado como <span className="font-medium text-slate-700">{userEmail}</span>
           </p>
-          <a
-            href="/api/auth/logout"
-            className="mt-2 inline-block text-sm font-medium text-slate-600 hover:text-slate-900"
+          <button
+            onClick={async () => {
+              try {
+                await fetch("/api/auth/logout", { method: "POST" });
+              } finally {
+                window.location.href = "/login";
+              }
+            }}
+            className="mt-2 inline-block text-sm font-medium text-slate-600 hover:text-slate-900 cursor-pointer bg-transparent border-none"
           >
             Sair
-          </a>
+          </button>
         </footer>
       </div>
     </main>

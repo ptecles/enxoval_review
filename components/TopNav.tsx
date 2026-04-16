@@ -77,7 +77,7 @@ export default function TopNav() {
             try {
               await fetch("/api/auth/logout", { method: "POST" });
             } finally {
-              router.push("/login");
+              window.location.href = "/login";
             }
           }}
         >
