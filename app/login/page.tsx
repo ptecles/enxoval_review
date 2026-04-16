@@ -77,10 +77,6 @@ export default function LoginPage({
           <div className="flex justify-center mb-4">
             <img src="/images/logo.png" alt="Logo" className="h-16 w-auto" />
           </div>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Carrinhos de bebê</h1>
-          <p className="mt-2 text-base text-slate-600">
-            Encontre um carrinho e veja reviews reais da comunidade
-          </p>
         </section>
 
         <div className="mx-auto w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">

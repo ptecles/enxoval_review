@@ -15,17 +15,17 @@ const SITES: Site[] = [
   {
     id: "calculadora",
     name: "Calculadora de Enxoval",
-    description: "Calcule quantidades ideais para o enxoval do seu bebê",
+    description: "Calcule o que seu bebê deve vestir para dormir",
     url: "https://enxovalinteligentecalculadora.netlify.app",
-    icon: "📊",
+    icon: "",
     color: "from-blue-500 to-cyan-500"
   },
   {
     id: "reviews",
     name: "Reviews de Carrinhos",
-    description: "Veja reviews reais de carrinhos de bebê da comunidade",
+    description: "Veja reviews reais da comunidade",
     url: "/carrinhos-lista",
-    icon: "🛒",
+    icon: "",
     color: "from-purple-500 to-pink-500"
   },
   {
@@ -33,7 +33,7 @@ const SITES: Site[] = [
     name: "Busca de Produtos",
     description: "Encontre os melhores produtos para bebês",
     url: "https://enxovalinteligenteprodutos.netlify.app",
-    icon: "🔍",
+    icon: "",
     color: "from-orange-500 to-red-500"
   }
 ];
@@ -64,13 +64,13 @@ export default function PortalDashboard({ userEmail, userName }: PortalDashboard
         <header className="text-center">
           <div className="mb-4 flex items-center justify-center gap-3">
             <img 
-              src="/logo.png" 
+              src="/images/logo.png" 
               alt="Enxoval Inteligente" 
-              className="h-16 w-16 rounded-2xl shadow-lg"
+              className="h-auto w-auto max-h-20"
             />
           </div>
           <h1 className="text-4xl font-bold tracking-tight text-slate-900">
-            Bem-vinda, {userName.split(" ")[0]}! 👋
+            Bem-vinda, {userName.split(" ")[0]}!
           </h1>
           <p className="mt-3 text-lg text-slate-600">
             Escolha uma das ferramentas do Enxoval Inteligente
@@ -88,8 +88,7 @@ export default function PortalDashboard({ userEmail, userName }: PortalDashboard
               <div className={`absolute inset-0 bg-gradient-to-br ${site.color} opacity-0 transition group-hover:opacity-5`} />
               
               <div className="relative">
-                <div className="mb-4 flex items-center justify-between">
-                  <span className="text-5xl">{site.icon}</span>
+                <div className="mb-4 flex items-center justify-end">
                   {redirecting === site.id ? (
                     <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-300 border-t-slate-900" />
                   ) : (

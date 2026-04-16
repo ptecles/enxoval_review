@@ -1,7 +1,5 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import { Suspense } from "react";
-import TopNav from "@/components/TopNav";
 
 export const metadata: Metadata = {
   title: "Enxoval Inteligente",
@@ -16,15 +14,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body className="min-h-screen bg-white">
-        <Suspense fallback={null}>
-          <TopNav />
-        </Suspense>
-        <div className="mx-auto max-w-5xl px-4 py-8">
-          {children}
-          <footer className="mt-12 border-t border-slate-200 pt-6 text-xs text-slate-500">
-            Copyright © 2026 Inc. Todos os direitos reservados. Edufe Digital CNPJ: 48.796.931/0001-74
-          </footer>
-        </div>
+        {children}
       </body>
     </html>
   );
