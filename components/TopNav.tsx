@@ -22,7 +22,7 @@ export default function TopNav() {
     else params.delete("q");
 
     const queryString = params.toString();
-    return queryString ? `/?${queryString}` : "/";
+    return queryString ? `/carrinhos-lista?${queryString}` : "/carrinhos-lista";
   }, [q, searchParams]);
 
   if (pathname === "/login") return null;
@@ -30,7 +30,7 @@ export default function TopNav() {
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex max-w-5xl items-center gap-4 px-4 py-3">
-        <a href="/" className="inline-flex items-center">
+        <a href="/carrinhos-lista" className="inline-flex items-center">
           <Image
             src="/images/logo.png"
             alt="Logo"
@@ -61,7 +61,7 @@ export default function TopNav() {
                 className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full px-2 py-1 text-xs font-medium text-slate-500 hover:text-slate-900"
                 onClick={() => {
                   setQ("");
-                  if (pathname === "/") router.push("/");
+                  if (pathname === "/carrinhos-lista") router.push("/carrinhos-lista");
                 }}
               >
                 Limpar
