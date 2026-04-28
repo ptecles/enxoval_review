@@ -87,14 +87,24 @@ export default async function StrollerPage({ params }: Props) {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {stroller.buyUrl ? (
+            {stroller.linkCarrinho ? (
               <a
-                href={stroller.buyUrl}
+                href={stroller.linkCarrinho}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center justify-center whitespace-nowrap rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
               >
-                Ver na loja
+                Ver carrinho na loja
+              </a>
+            ) : null}
+            {stroller.linkTravel ? (
+              <a
+                href={stroller.linkTravel}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                Ver travel system na loja
               </a>
             ) : null}
           </div>

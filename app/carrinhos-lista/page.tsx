@@ -8,11 +8,6 @@ function formatCategoryName(category: string) {
   return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
 }
 
-function formatSubcategoryName(subcategory: string | null) {
-  const trimmed = (subcategory || "").trim();
-  if (!trimmed) return "";
-  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
-}
 
 export default async function HomePage({
   searchParams
@@ -31,7 +26,6 @@ export default async function HomePage({
           s.name,
           s.brand,
           s.category,
-          s.subcategory || "",
           s.summary || ""
         ]
           .join(" ")
@@ -42,9 +36,7 @@ export default async function HomePage({
 
   const byCategory = filteredStrollers.reduce<Record<string, typeof filteredStrollers>>((acc, s) => {
     const categoryKey = s.category?.trim() || "Outros";
-    const subKey = (s.subcategory || "").trim();
-    const key = `${categoryKey}||${subKey}`;
-    (acc[key] ||= []).push(s);
+    (acc[categoryKey] ||= []).push(s);
     return acc;
   }, {});
 
@@ -67,17 +59,12 @@ export default async function HomePage({
 
       {categories.map((category) => {
         const items = [...byCategory[category]].sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
-        const [rawCategory, rawSubcategory] = category.split("||");
-        const displayCategory = formatCategoryName(rawCategory);
-        const displaySubcategory = formatSubcategoryName(rawSubcategory || "");
+        const displayCategory = formatCategoryName(category);
         return (
           <section key={category} className="space-y-3">
             <div className="flex items-end justify-between">
               <h2 className="text-lg font-semibold">
                 <span className="text-[#678EA6]">{displayCategory}</span>
-                {displaySubcategory ? (
-                  <span className="font-medium text-[#D88B74]"> / {displaySubcategory}</span>
-                ) : null}
               </h2>
             </div>
 

@@ -3,10 +3,10 @@ export type Stroller = {
   name: string;
   brand: string;
   category: string;
-  subcategory: string | null;
   summary: string | null;
   imageUrl: string | null;
-  buyUrl: string | null;
+  linkCarrinho: string | null;
+  linkTravel: string | null;
 };
 
 export type Review = {

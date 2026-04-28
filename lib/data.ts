@@ -12,10 +12,10 @@ const strollerRowSchema = z.object({
   name: z.string().min(1),
   brand: z.string().min(1),
   category: z.string().min(1),
-  subcategory: z.string().nullable().default(null),
   summary: z.string().nullable().default(null),
   imageUrl: z.string().url().nullable().default(null),
-  buyUrl: z.string().url().nullable().default(null)
+  linkCarrinho: z.string().url().nullable().default(null),
+  linkTravel: z.string().url().nullable().default(null)
 });
 
 function normalizeCell(v: unknown): string {
@@ -117,30 +117,21 @@ async function listStrollersFromCsv(csvUrl: string): Promise<Stroller[]> {
       name: getFirstValue(obj, ["name", "nome", "Nome"]),
       brand: getFirstValue(obj, ["brand", "marca", "Marca"]),
       category: getFirstValue(obj, ["category", "categoria", "Categoria"]),
-      subcategory:
-        getFirstValue(obj, [
-          "subcategory",
-          "subCategory",
-          "subcategoria",
-          "Subcategoria",
-          "Subcategoria",
-          "sub_categoria",
-          "sub categoria",
-          "Sub categoria"
-        ]) || undefined,
       summary: getFirstValue(obj, ["summary", "resumo", "Resumo"]) || undefined,
       imageUrl: getFirstValue(obj, ["imageUrl", "image", "imagem", "Imagem"]) || undefined,
-      buyUrl:
+      linkCarrinho:
         getFirstValue(obj, [
-          "buyUrl",
-          "buy",
-          "compra",
-          "comprar",
-          "link",
-          "link_compra",
-          "link compra",
-          "url",
-          "URL"
+          "linkCarrinho",
+          "link_carrinho",
+          "link carrinho",
+          "Link Carrinho"
+        ]) || undefined,
+      linkTravel:
+        getFirstValue(obj, [
+          "linkTravel",
+          "link_travel",
+          "link travel",
+          "Link Travel"
         ]) || undefined
     });
     if (parsed.success) items.push(parsed.data);
@@ -176,29 +167,21 @@ export async function listStrollers(): Promise<Stroller[]> {
       name: getFirstValue(obj, ["name", "nome", "Nome"]),
       brand: getFirstValue(obj, ["brand", "marca", "Marca"]),
       category: getFirstValue(obj, ["category", "categoria", "Categoria"]),
-      subcategory:
-        getFirstValue(obj, [
-          "subcategory",
-          "subCategory",
-          "subcategoria",
-          "Subcategoria",
-          "sub_categoria",
-          "sub categoria",
-          "Sub categoria"
-        ]) || undefined,
       summary: getFirstValue(obj, ["summary", "resumo", "Resumo"]) || undefined,
       imageUrl: getFirstValue(obj, ["imageUrl", "image", "imagem", "Imagem"]) || undefined,
-      buyUrl:
+      linkCarrinho:
         getFirstValue(obj, [
-          "buyUrl",
-          "buy",
-          "compra",
-          "comprar",
-          "link",
-          "link_compra",
-          "link compra",
-          "url",
-          "URL"
+          "linkCarrinho",
+          "link_carrinho",
+          "link carrinho",
+          "Link Carrinho"
+        ]) || undefined,
+      linkTravel:
+        getFirstValue(obj, [
+          "linkTravel",
+          "link_travel",
+          "link travel",
+          "Link Travel"
         ]) || undefined
     });
     if (parsed.success) items.push(parsed.data);
