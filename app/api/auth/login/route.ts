@@ -139,13 +139,14 @@ async function checkEmailAuthorized(email: string) {
   console.log(`[AUTH DEBUG] Total de vendas encontradas: ${sales.length}`);
 
   const activeSales = sales.filter(sale => {
-    if (!sale.purchase_date) {
-      console.log(`[AUTH DEBUG] Venda sem purchase_date:`, sale);
+    const orderDate = sale.purchase?.order_date;
+    if (!orderDate) {
+      console.log(`[AUTH DEBUG] Venda sem order_date:`, sale);
       return false;
     }
-    const purchaseDate = new Date(sale.purchase_date);
+    const purchaseDate = new Date(orderDate);
     const isActive = purchaseDate > twelveMonthsAgo;
-    console.log(`[AUTH DEBUG] Venda: ${sale.purchase_date} | Status: ${sale.transaction_status} | Ativa: ${isActive}`);
+    console.log(`[AUTH DEBUG] Venda: ${purchaseDate.toISOString()} | Status: ${sale.purchase?.status} | Ativa: ${isActive}`);
     return isActive;
   });
 
@@ -157,8 +158,8 @@ async function checkEmailAuthorized(email: string) {
 
   // Pegar a compra mais recente
   const mostRecentSale = activeSales.reduce((latest, current) => {
-    const latestDate = new Date(latest.purchase_date);
-    const currentDate = new Date(current.purchase_date);
+    const latestDate = new Date(latest.purchase?.order_date || 0);
+    const currentDate = new Date(current.purchase?.order_date || 0);
     return currentDate > latestDate ? current : latest;
   }, activeSales[0]);
 
@@ -166,7 +167,7 @@ async function checkEmailAuthorized(email: string) {
     email: trimmedEmail,
     name: mostRecentSale?.buyer?.name || "Usuário",
     totalPurchases: activeSales.length,
-    lastPurchase: mostRecentSale?.purchase_date || null
+    lastPurchase: mostRecentSale?.purchase?.order_date ? new Date(mostRecentSale.purchase.order_date).toISOString() : null
   };
 
   return { authorized: true, user } as const;
