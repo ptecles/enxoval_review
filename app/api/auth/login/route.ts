@@ -128,11 +128,32 @@ async function checkEmailAuthorized(email: string) {
     return { authorized: false, message: "Email não encontrado na base de clientes" } as const;
   }
 
+  // Filtrar vendas dos últimos 12 meses
+  const twelveMonthsAgo = new Date();
+  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+
+  const activeSales = sales.filter(sale => {
+    if (!sale.purchase_date) return false;
+    const purchaseDate = new Date(sale.purchase_date);
+    return purchaseDate > twelveMonthsAgo;
+  });
+
+  if (activeSales.length === 0) {
+    return { authorized: false, message: "Seu acesso expirou. A última compra foi há mais de 12 meses." } as const;
+  }
+
+  // Pegar a compra mais recente
+  const mostRecentSale = activeSales.reduce((latest, current) => {
+    const latestDate = new Date(latest.purchase_date);
+    const currentDate = new Date(current.purchase_date);
+    return currentDate > latestDate ? current : latest;
+  }, activeSales[0]);
+
   const user = {
     email: trimmedEmail,
-    name: sales[0]?.buyer?.name || "Usuário",
-    totalPurchases: sales.length,
-    lastPurchase: sales[0]?.purchase_date || null
+    name: mostRecentSale?.buyer?.name || "Usuário",
+    totalPurchases: activeSales.length,
+    lastPurchase: mostRecentSale?.purchase_date || null
   };
 
   return { authorized: true, user } as const;
