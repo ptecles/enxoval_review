@@ -129,14 +129,27 @@ async function checkEmailAuthorized(email: string) {
   }
 
   // Filtrar vendas dos últimos 12 meses
+  const now = new Date();
   const twelveMonthsAgo = new Date();
   twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
 
+  console.log(`[AUTH DEBUG] Email: ${trimmedEmail}`);
+  console.log(`[AUTH DEBUG] Data atual: ${now.toISOString()}`);
+  console.log(`[AUTH DEBUG] 12 meses atrás: ${twelveMonthsAgo.toISOString()}`);
+  console.log(`[AUTH DEBUG] Total de vendas encontradas: ${sales.length}`);
+
   const activeSales = sales.filter(sale => {
-    if (!sale.purchase_date) return false;
+    if (!sale.purchase_date) {
+      console.log(`[AUTH DEBUG] Venda sem purchase_date:`, sale);
+      return false;
+    }
     const purchaseDate = new Date(sale.purchase_date);
-    return purchaseDate > twelveMonthsAgo;
+    const isActive = purchaseDate > twelveMonthsAgo;
+    console.log(`[AUTH DEBUG] Venda: ${sale.purchase_date} | Status: ${sale.transaction_status} | Ativa: ${isActive}`);
+    return isActive;
   });
+
+  console.log(`[AUTH DEBUG] Vendas ativas (últimos 12 meses): ${activeSales.length}`);
 
   if (activeSales.length === 0) {
     return { authorized: false, message: "Seu acesso expirou. A última compra foi há mais de 12 meses." } as const;
