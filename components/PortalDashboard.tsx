@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 type Site = {
   id: string;
@@ -30,7 +30,7 @@ const SITES: Site[] = [
   },
   {
     id: "produtos",
-    name: "Busca de Produtos",
+    name: "Busca Produtos",
     description: "Encontre os melhores produtos para bebês",
     url: "https://enxovalinteligenteprodutos.netlify.app",
     icon: "",
@@ -45,6 +45,10 @@ type PortalDashboardProps = {
 
 export default function PortalDashboard({ userEmail, userName }: PortalDashboardProps) {
   const [redirecting, setRedirecting] = useState<string | null>(null);
+
+  useEffect(() => {
+    setRedirecting(null);
+  }, []);
 
   function handleSiteClick(site: Site) {
     setRedirecting(site.id);

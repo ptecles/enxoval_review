@@ -153,7 +153,7 @@ async function checkEmailAuthorized(email: string) {
   console.log(`[AUTH DEBUG] Vendas ativas (últimos 12 meses): ${activeSales.length}`);
 
   if (activeSales.length === 0) {
-    return { authorized: false, message: "Seu acesso expirou. A última compra foi há mais de 12 meses." } as const;
+    return { authorized: false, message: "Desculpe, não encontramos uma conta ativa no Enxoval Inteligente com este e-mail. Se você ainda está no período de vigência do curso (12 meses), por favor nos chame no whatsapp do Suporte: (61) 99677-1282" } as const;
   }
 
   // Pegar a compra mais recente
