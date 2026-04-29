@@ -136,7 +136,7 @@ export default async function StrollerPage({ params }: Props) {
       </section>
 
       <div>
-        <a href="/" className="text-sm font-medium text-slate-700 hover:text-slate-900">
+        <a href="/carrinhos-lista" className="text-sm font-medium text-slate-700 hover:text-slate-900">
           Voltar
         </a>
       </div>
