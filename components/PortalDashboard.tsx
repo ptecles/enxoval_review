@@ -49,9 +49,8 @@ export default function PortalDashboard({ userEmail, userName }: PortalDashboard
   const router = useRouter();
 
   function handleSiteClick(site: Site) {
-    setRedirecting(site.id);
-    
     if (site.url.startsWith("/")) {
+      setRedirecting(site.id);
       router.push(site.url);
     } else {
       const url = new URL(site.url);
