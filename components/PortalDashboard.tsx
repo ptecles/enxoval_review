@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 type Site = {
   id: string;
@@ -45,16 +46,13 @@ type PortalDashboardProps = {
 
 export default function PortalDashboard({ userEmail, userName }: PortalDashboardProps) {
   const [redirecting, setRedirecting] = useState<string | null>(null);
-
-  useEffect(() => {
-    setRedirecting(null);
-  }, []);
+  const router = useRouter();
 
   function handleSiteClick(site: Site) {
     setRedirecting(site.id);
     
     if (site.url.startsWith("/")) {
-      window.location.href = site.url;
+      router.push(site.url);
     } else {
       const url = new URL(site.url);
       url.searchParams.set("auth_email", userEmail);
