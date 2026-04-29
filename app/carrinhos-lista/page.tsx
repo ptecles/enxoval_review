@@ -83,7 +83,8 @@ export default async function HomePage({
                           alt={s.name}
                           loading="lazy"
                           decoding="async"
-                          className="h-[72px] w-[72px] flex-none rounded-xl bg-slate-100 object-cover ring-1 ring-slate-200"
+                          className="h-[72px] w-[72px] flex-none rounded-xl bg-slate-100 object-contain p-1 ring-1 ring-slate-200"
+                          style={{ imageRendering: 'crisp-edges' }}
                         />
                       ) : null}
                       <div>
