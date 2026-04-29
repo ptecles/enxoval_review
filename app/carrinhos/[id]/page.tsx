@@ -86,7 +86,7 @@ export default async function StrollerPage({ params }: Props) {
               ) : null}
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-col gap-2">
             {stroller.linkCarrinho ? (
               <a
                 href={stroller.linkCarrinho}
