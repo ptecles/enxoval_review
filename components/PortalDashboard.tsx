@@ -36,6 +36,14 @@ const SITES: Site[] = [
     url: "https://enxovalinteligenteprodutos.netlify.app",
     icon: "",
     color: "from-orange-500 to-red-500"
+  },
+  {
+    id: "instagram",
+    name: "Instagram secreto",
+    description: "Acesse conteúdo exclusivo da comunidade",
+    url: "/instagram-secreto",
+    icon: "",
+    color: "from-green-500 to-emerald-500"
   }
 ];
 
