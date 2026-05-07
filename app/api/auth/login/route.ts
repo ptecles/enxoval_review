@@ -75,6 +75,46 @@ async function getValidToken() {
   return currentToken;
 }
 
+// Função para verificar se email está na planilha de emails autorizados manualmente
+async function checkEmailInWhitelist(email: string): Promise<{ found: boolean; name?: string }> {
+  const WHITELIST_CSV_URL = process.env.WHITELIST_CSV_URL;
+  
+  if (!WHITELIST_CSV_URL) {
+    return { found: false }; // Se não configurado, ignora a verificação
+  }
+
+  try {
+    const response = await fetch(WHITELIST_CSV_URL);
+    if (!response.ok) {
+      console.error("Erro ao buscar planilha de whitelist:", response.status);
+      return { found: false };
+    }
+
+    const csvText = await response.text();
+    const lines = csvText.split('\n');
+    
+    // Pular cabeçalho e buscar emails (coluna 1: email, coluna 2: nome)
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+      
+      // Pegar colunas (email e nome)
+      const columns = line.split(',');
+      const emailInSheet = columns[0]?.trim().toLowerCase().replace(/"/g, '');
+      const nameInSheet = columns[1]?.trim().replace(/"/g, '') || 'Usuária';
+      
+      if (emailInSheet === email.toLowerCase().trim()) {
+        return { found: true, name: nameInSheet };
+      }
+    }
+    
+    return { found: false };
+  } catch (error) {
+    console.error("Erro ao verificar whitelist:", error);
+    return { found: false };
+  }
+}
+
 async function checkEmailAuthorized(email: string) {
   const trimmedEmail = email.toLowerCase().trim();
 
@@ -82,6 +122,23 @@ async function checkEmailAuthorized(email: string) {
     return { authorized: false, message: "Email é obrigatório" } as const;
   }
 
+  // Primeiro, verificar se está na whitelist manual
+  const whitelistResult = await checkEmailInWhitelist(trimmedEmail);
+  
+  if (whitelistResult.found) {
+    // Email está na whitelist, autorizar sem verificar Hotmart
+    return { 
+      authorized: true, 
+      user: {
+        email: trimmedEmail,
+        name: whitelistResult.name || "Usuária",
+        totalPurchases: 0,
+        lastPurchase: null
+      }
+    } as const;
+  }
+
+  // Se não está na whitelist, verificar na Hotmart normalmente
   const token = await getValidToken();
 
   if (!token.access_token) {
@@ -133,24 +190,14 @@ async function checkEmailAuthorized(email: string) {
   const twelveMonthsAgo = new Date();
   twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
 
-  console.log(`[AUTH DEBUG] Email: ${trimmedEmail}`);
-  console.log(`[AUTH DEBUG] Data atual: ${now.toISOString()}`);
-  console.log(`[AUTH DEBUG] 12 meses atrás: ${twelveMonthsAgo.toISOString()}`);
-  console.log(`[AUTH DEBUG] Total de vendas encontradas: ${sales.length}`);
-
   const activeSales = sales.filter(sale => {
     const orderDate = sale.purchase?.order_date;
     if (!orderDate) {
-      console.log(`[AUTH DEBUG] Venda sem order_date:`, sale);
       return false;
     }
     const purchaseDate = new Date(orderDate);
-    const isActive = purchaseDate > twelveMonthsAgo;
-    console.log(`[AUTH DEBUG] Venda: ${purchaseDate.toISOString()} | Status: ${sale.purchase?.status} | Ativa: ${isActive}`);
-    return isActive;
+    return purchaseDate > twelveMonthsAgo;
   });
-
-  console.log(`[AUTH DEBUG] Vendas ativas (últimos 12 meses): ${activeSales.length}`);
 
   if (activeSales.length === 0) {
     return { authorized: false, message: "Desculpe, não encontramos uma conta ativa no Enxoval Inteligente com este e-mail. Se você ainda está no período de vigência do curso (12 meses), por favor nos chame no whatsapp do Suporte: (61) 99677-1282" } as const;
